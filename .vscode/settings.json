@@ -1,0 +1,27 @@
+{
+    "C_Cpp.default.includePath": [
+        "${workspaceFolder}/include"
+    ],
+    "files.associations": {
+        "charconv": "cpp",
+        "filesystem": "cpp",
+        "iosfwd": "cpp",
+        "istream": "cpp",
+        "ostream": "cpp",
+        "regex": "cpp",
+        "streambuf": "cpp",
+        "string": "cpp",
+        "tuple": "cpp",
+        "xfacet": "cpp",
+        "xiosbase": "cpp",
+        "xstring": "cpp",
+        "libgen.h": "c",
+        "util.h": "c",
+        "cstdlib": "c",
+        "minwindef.h": "c",
+        "config.h": "c",
+        "errno.h": "c",
+        "stat.h": "c"
+    },
+    "C_Cpp.default.compilerPath": "C:\\msys64\\mingw64\\bin\\clang.exe"
+}
