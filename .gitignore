@@ -16,3 +16,5 @@ build-macos/
 
 # IF
 bin/
+
+compile_commands.json
