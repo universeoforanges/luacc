@@ -1,0 +1,18 @@
+# executable formats
+
+*.luac
+*.out
+# i'll add windows support later, wutever
+*.exe
+
+.vscode/
+.vs/
+build/
+out/
+
+build-linux/
+build-win32/
+build-macos/
+
+# IF
+bin/
