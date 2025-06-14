@@ -17,4 +17,6 @@ build-macos/
 # IF
 bin/
 
+.cache/
+
 compile_commands.json
