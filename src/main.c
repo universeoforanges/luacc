@@ -1,11 +1,13 @@
+#include "luacc/luac_func_chunk.h"
+#include <luacc/luac_chunk.h>
 #include <luacc/array.h>
 #include <luacc/log.h>
 
-#include <string.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 
 #include <unistd.h>
+#include <string.h>
 #include <stdio.h>
 
 void print_usage(void)
@@ -51,6 +53,14 @@ int main(int argc, char **argv)
 		case 'a':
 			asm_syntax = optarg;
 			break;
+		case 'V':
+			luacc_enable_verbose_logging(LUACC_TRUE);
+			break;
+		default:
+			char buf[32];
+			snprintf(buf, sizeof(buf), "invalid command line option `%c`", (char) opt);
+
+			luacc_log(LUACC_LOG_LEVEL_WARNING, buf);
 		}
 	}
 
@@ -58,22 +68,77 @@ int main(int argc, char **argv)
 
 	if (!input_files)
 		luacc_log(LUACC_LOG_LEVEL_FATAL, "memory allocation failure during input file array allocation");
+	
+	// file reading
 
 	for (int i = 0; i < argc; i++)
 	{
-		if (strcmp(argv[i], argv[0]) == 0) continue;
+		if (strcmp(argv[i], argv[0]) == 0 || !is_file(argv[i])) continue;
+		
+		FILE *input_file = fopen(argv[i], "r");
 
-		char *fname = argv[i];
-		if (!is_file(fname)) continue;
+		if (!input_file)
+		{
+			char buf[256];
+			snprintf(buf, sizeof(buf), "could not open input file %s", argv[i]);
 
-		luacc_array_append(input_files, fname);
+			luacc_log(LUACC_LOG_LEVEL_ERROR, buf);
+
+			continue;
+		}
+
+		luacc_array_append(input_files, input_file);
 	}
 
 	if (input_files->len == 0)
+	{
+		luacc_free_array(input_files);
 		luacc_log(LUACC_LOG_LEVEL_FATAL, "what input files are there to even compile??");
+	}
+	
+	array_t *chunks = luacc_alloc_array();
+	array_t *function_chunks = luacc_alloc_array();
 	
 	for (int i = 0; i < input_files->len; i++)
-		luacc_log(LUACC_LOG_LEVEL_VERBOSE, (const char *) input_files->data[i]);
+		luacc_array_append(chunks, luacc_read_chunk((FILE *) input_files->data[i]));
+
+	// parsing
+
+	for (int i = 0; i < chunks->len; i++)
+	{
+		luacc_chunk_t *chunk = (luacc_chunk_t *) chunks->data[i];
+		luacc_chunk_header_t *header = luacc_chunk_parse_header(chunk);
+
+		if (strcmp((char *) header->signature, "Lua") != 0 || header->lua_ver != 0x51)
+		{
+			char buf[256];
+			snprintf(buf, sizeof(buf), "unsupported luac version: this version of luacc supports Lua 51 only, but got %s %x", (char *) header->signature, header->lua_ver);
+
+			luacc_log(LUACC_LOG_LEVEL_WARNING, buf);
+		}
+
+		luacc_free_chunk_header(header);
+		
+		size_t index = 0;
+		luacc_function_chunk_t *func_chunk = luacc_parse_function_chunk(chunk, &index);
+
+		luacc_array_append(function_chunks, func_chunk);
+	}
+	
+	// cleanup
+
+	for (int i = 0; i < input_files->len; i++)
+		fclose(input_files->data[i]);
 
 	luacc_free_array(input_files);
+
+	for (int i = 0; i < chunks->len; i++)
+		luacc_free_chunk((luacc_chunk_t *) chunks->data[i]);
+	
+	luacc_free_array(chunks);
+
+	for (int i = 0; i < function_chunks->len; i++)
+		luacc_free_function_chunk((luacc_function_chunk_t *) function_chunks->data[i]);
+	
+	luacc_free_array(function_chunks);
 }

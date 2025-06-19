@@ -10,6 +10,11 @@ void luacc_enable_verbose_logging(const bool_t should_enable)
 	g_verbose_logging_enabled = should_enable;
 }
 
+bool_t luacc_has_verbose_logging(void)
+{
+	return g_verbose_logging_enabled;
+}
+
 void luacc_log(const luacc_log_level_t level, const char *msg)
 {
 	switch (level)

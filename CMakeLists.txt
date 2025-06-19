@@ -14,6 +14,8 @@ file(GLOB_RECURSE LUACC_SRC "${PROJECT_SOURCE_DIR}/src/*.c")
 
 add_executable(${PROJECT_NAME} ${LUACC_SRC})
 
+target_compile_options(${PROJECT_NAME} PRIVATE "-g")
+target_compile_options(${PROJECT_NAME} PRIVATE "--static")
 target_compile_definitions(${PROJECT_NAME} PRIVATE -DLUACC_VERSION="luacc version ${PROJECT_VERSION}")
 
 # include paths

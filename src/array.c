@@ -21,6 +21,7 @@ array_t *luacc_alloc_array(void)
 	if (!arr->data)
 	{
 		luacc_log(LUACC_LOG_LEVEL_VERBOSE, "luacc_alloc_array() warning: memory allocation failure");
+		free(arr);
 		return NULL;
 	}
 
@@ -39,21 +40,42 @@ void luacc_free_array(array_t *arr)
 	free(arr);
 }
 
+void luacc_array_resize(array_t *arr, const size_t new_size)
+{
+	if (new_size == arr->size)
+	{
+		luacc_log(LUACC_LOG_LEVEL_VERBOSE, "luacc_array_resize() warning: avoiding an unnecessary allocation");
+		return;
+	}
+
+	arr->size = new_size;
+	arr->data = realloc(arr->data, sizeof(void *) * arr->size);
+
+	if (!arr->data)
+	{
+		luacc_log(LUACC_LOG_LEVEL_VERBOSE, "luacc_array_resize() warning: memory allocation failure during array reallocation");
+		return;
+	}
+}
+
 void luacc_array_append(array_t *arr, const void *item)
 {
 	if (arr->len >= arr->size)
-	{
-		arr->len *= 2;
-		arr->data = realloc(arr->data, sizeof(void*) * arr->len);
-
-		if (!arr->data)
-		{
-			luacc_log(LUACC_LOG_LEVEL_VERBOSE, "luacc_array_append() warning: memory allocation failure during array resize");
-			return;
-		}
-	}
+		luacc_array_resize(arr, arr->size * 2);
 
 	arr->data[arr->len++] = item;
+}
+
+void luacc_array_insert(array_t *arr, const array_t *arr0, const size_t len)
+{
+	for (size_t i = 0; i < len; i++)
+		luacc_array_append(arr, arr0->data[i]);
+}
+
+void luacc_array_raw_insert(array_t *arr, void *arr0, const size_t len)
+{
+	for (size_t i = 0; i < len; i++)
+		luacc_array_append(arr, &arr0[i]);
 }
 
 void luacc_array_remove(array_t *arr, const size_t idx)
