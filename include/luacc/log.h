@@ -5,7 +5,7 @@
 
 typedef enum
 {
-	LUACC_LOG_LEVEL_VERBOSE    = 0,    // will only be logged if the -V command line argument is provided
+	LUACC_LOG_LEVEL_VERBOSE    = 0,    // will only be logged if verbose logging is enabled (e.g. by passing `-V` in the command line)
 	LUACC_LOG_LEVEL_INFO       = 1,
 	LUACC_LOG_LEVEL_WARNING    = 2,
 	LUACC_LOG_LEVEL_ERROR      = 3,

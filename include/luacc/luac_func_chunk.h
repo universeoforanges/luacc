@@ -99,7 +99,7 @@ typedef struct
 
 	array_t *instructions;
 	array_t *constants;
-	array_t *prototypes; // unused
+	array_t *prototypes;
 } luacc_function_chunk_t;
 
 #define LUACC_INSTR_OPCODE(i)   ((i) & 0x3F)

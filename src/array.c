@@ -42,11 +42,7 @@ void luacc_free_array(array_t *arr)
 
 void luacc_array_resize(array_t *arr, const size_t new_size)
 {
-	if (new_size == arr->size)
-	{
-		luacc_log(LUACC_LOG_LEVEL_VERBOSE, "luacc_array_resize() warning: avoiding an unnecessary allocation");
-		return;
-	}
+	if (new_size == arr->size || new_size == 0) return;
 
 	arr->size = new_size;
 	arr->data = realloc(arr->data, sizeof(void *) * arr->size);

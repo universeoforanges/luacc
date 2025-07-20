@@ -1,4 +1,3 @@
-#include "luacc/util.h"
 #include <luacc/luac_chunk.h>
 #include <luacc/log.h>
 
@@ -8,11 +7,9 @@ luacc_chunk_t *luacc_read_chunk(FILE *luac)
 {
 	if (!luac)
 	{
-		luacc_log(LUACC_LOG_LEVEL_ERROR, "luacc_read_chunk(): attempt to read a chunk using an invalid file");
+		luacc_log(LUACC_LOG_LEVEL_ERROR, "luacc_read_chunk(): attempt to read a chunk with an invalid file");
 		return NULL;
 	}
-
-	luacc_log(LUACC_LOG_LEVEL_VERBOSE, "parsing a luac chunk...");
 
 	luacc_chunk_t *chunk = (luacc_chunk_t *) malloc(sizeof(luacc_chunk_t));
 	chunk->bytes = NULL;
@@ -24,7 +21,8 @@ luacc_chunk_t *luacc_read_chunk(FILE *luac)
 
 	while ((c = fgetc(luac)) != EOF)
 	{
-		if (i < 12)
+		// the length of the header should be 12 bytes in luac5.1
+		if (i < sizeof(chunk->header_bytes))
 		{
 			chunk->header_bytes[i] = c;
 

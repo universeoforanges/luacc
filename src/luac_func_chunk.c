@@ -174,7 +174,7 @@ luacc_function_chunk_t *luacc_parse_function_chunk(const luacc_chunk_t *chunk, s
 
 	for (uint64_t i = 0; i < CONSTANT_COUNT; i++)
 	{
-		luacc_constant_t *constant = malloc(sizeof(luacc_constant_t));
+		luacc_constant_t *constant = (luacc_constant_t *) malloc(sizeof(luacc_constant_t));
 		constant->type = luacc_get_byte(chunk, index);
 		constant->bool_val = LUACC_FALSE;
 		constant->double_val = 0.0;
@@ -191,7 +191,7 @@ luacc_function_chunk_t *luacc_parse_function_chunk(const luacc_chunk_t *chunk, s
 			if (constant->bool_val > 1)
 			{
 				char buf[256];
-				snprintf(buf, sizeof(buf), "in %s: invalid bool constant (expected a byte which is either 0x00 or 0x01, but got 0x%x). bool values greater than 1 will always equate to true", func_chunk->name->str, constant->bool_val);
+				snprintf(buf, sizeof(buf), "in %s: invalid bool constant (expected a byte which is either 0x00 or 0x01, but got 0x%x). bool values that aren't 0 will always equate to true", func_chunk->name->str, constant->bool_val);
 				
 				luacc_log(LUACC_LOG_LEVEL_WARNING, buf);
 			}
@@ -250,6 +250,35 @@ luacc_function_chunk_t *luacc_parse_function_chunk(const luacc_chunk_t *chunk, s
 				break;
 			default:
 				printf("unknown instruction type\n");
+			}
+		}
+
+		if (func_chunk->constants->len > 0)
+		{
+			printf("\n\tconstants in %s: \n", func_chunk->name->str);
+
+			for (size_t i = 0; i < func_chunk->constants->len; i++)
+			{
+				luacc_constant_t *constant = (luacc_constant_t *) func_chunk->constants->data[i];
+				printf("\t\t%u: ", (uint32_t) i);
+
+				switch (constant->type)
+				{
+				case LUACC_CONST_TYPE_NIL:
+					printf("NIL");
+					break;
+				case LUACC_CONST_TYPE_BOOL:
+					printf("BOOL %s", constant->bool_val ? "true" : "false");
+					break;
+				case LUACC_CONST_TYPE_NUMBER:
+					printf("NUMBER %.2f", constant->double_val);
+					break;
+				case LUACC_CONST_TYPE_STRING:
+					printf("STRING %s", constant->str_val->str);
+					break;
+				}
+
+				putchar('\n');
 			}
 		}
 	}
