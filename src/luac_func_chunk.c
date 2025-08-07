@@ -7,7 +7,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-const luacc_instr_type_t TYPES[38] = {
+static const luacc_instr_type_t TYPES[38] = {
 	LUACC_INSTR_TYPE_ABC,        // MOVE
 	LUACC_INSTR_TYPE_ABX,        // LOADK
 	LUACC_INSTR_TYPE_ABC,        // LOADBOOL
@@ -48,7 +48,7 @@ const luacc_instr_type_t TYPES[38] = {
 	LUACC_INSTR_TYPE_ABC,        // VARARG
 };
 
-const char *OPCODE_NAMES[38] = {
+static const char *OPCODE_NAMES[38] = {
 	"MOVE",
 	"LOADK",
 	"LOADBOOL",
@@ -101,9 +101,12 @@ luacc_instruction_t *luacc_decode_instruction(const int instr)
 	if (instruction->opcode >= 38)
 	{
 		char buf[256];
-		snprintf(buf, sizeof(buf), "unknown instruction opcode %i", instruction->opcode);
+		snprintf(buf, sizeof(buf), "unknown instruction opcode %d", instruction->opcode);
 
-		luacc_log(LUACC_LOG_LEVEL_FATAL, buf);
+		luacc_log(LUACC_LOG_LEVEL_ERROR, buf);
+		
+		free(instruction);
+		return NULL;
 	}
 
 	instruction->type = TYPES[instruction->opcode];
@@ -128,7 +131,9 @@ luacc_instruction_t *luacc_decode_instruction(const int instr)
 		break;
 	default:
 		free(instruction);
-		luacc_log(LUACC_LOG_LEVEL_FATAL, "unknown instruction type. expected LUACC_INSTR_TYPE_ABC, LUACC_INSTR_TYPE_ABX, LUACC_INSTR_TYPE_ASBX");
+		luacc_log(LUACC_LOG_LEVEL_ERROR, "unknown instruction type. expected LUACC_INSTR_TYPE_ABC, LUACC_INSTR_TYPE_ABX, LUACC_INSTR_TYPE_ASBX");
+
+		return NULL;
 	}
 	
 	return instruction;
@@ -141,11 +146,13 @@ void luacc_free_instruction(luacc_instruction_t *instr)
 
 luacc_function_chunk_t *luacc_parse_function_chunk(const luacc_chunk_t *chunk, size_t *index)
 {
+	luacc_chunk_header_t *header = luacc_chunk_parse_header(chunk);
 	luacc_function_chunk_t *func_chunk = (luacc_function_chunk_t *) malloc(sizeof(luacc_function_chunk_t));
 	
 	if (!func_chunk)
 		luacc_log(LUACC_LOG_LEVEL_FATAL, "memory allocation failure while allocating memory for a function chunk");
-
+	
+	func_chunk->src_chunk = (luacc_chunk_t *) chunk;
 	func_chunk->name = luacc_get_lua_str(chunk, index);
 	func_chunk->first_line = luacc_get_uint(chunk, index);
 	func_chunk->last_line = luacc_get_uint(chunk, index);
@@ -163,6 +170,15 @@ luacc_function_chunk_t *luacc_parse_function_chunk(const luacc_chunk_t *chunk, s
 	{
 		int instr_code = (int) luacc_get_u32(chunk, index);
 		luacc_instruction_t *instr = luacc_decode_instruction(instr_code);
+
+		if (!instr)
+		{
+			char buf[256];
+			snprintf(buf, sizeof(buf), "in %s at char %d of file: could not decode instruction at index %u", func_chunk->name->str, (int) (*index) + 12, (uint32_t) i);
+
+			luacc_log(LUACC_LOG_LEVEL_WARNING, buf);
+			continue;
+		}
 
 		luacc_array_append(func_chunk->instructions, instr);
 	}
@@ -191,7 +207,7 @@ luacc_function_chunk_t *luacc_parse_function_chunk(const luacc_chunk_t *chunk, s
 			if (constant->bool_val > 1)
 			{
 				char buf[256];
-				snprintf(buf, sizeof(buf), "in %s: invalid bool constant (expected a byte which is either 0x00 or 0x01, but got 0x%x). bool values that aren't 0 will always equate to true", func_chunk->name->str, constant->bool_val);
+				snprintf(buf, sizeof(buf), "in %s at char %d of file: invalid bool constant (expected a byte which is either 0x00 or 0x01, but got 0x%x). bool values that aren't 0 will always equate to true", func_chunk->name->str, (int) (*index) + 12, constant->bool_val);
 				
 				luacc_log(LUACC_LOG_LEVEL_WARNING, buf);
 			}
@@ -205,9 +221,12 @@ luacc_function_chunk_t *luacc_parse_function_chunk(const luacc_chunk_t *chunk, s
 			break;
 		default:
 			char buf[256];
-			snprintf(buf, sizeof(buf), "in %s: invalid constant type (expected 0x00 (NIL), 0x01 (BOOL), 0x03 (LUA_NUMBER), 0x04 (STRING))", func_chunk->name->str);
+			snprintf(buf, sizeof(buf), "in %s at char %d of file: invalid constant type (expected 0x00 (NIL), 0x01 (BOOL), 0x03 (LUA_NUMBER), 0x04 (STRING))", func_chunk->name->str, (int) (*index) + 12);
+			
+			luacc_log(LUACC_LOG_LEVEL_WARNING, buf);
+			constant->type = -1;
 
-			luacc_log(LUACC_LOG_LEVEL_FATAL, buf);
+			break;
 		}
 
 		luacc_array_append(func_chunk->constants, constant);
@@ -276,12 +295,48 @@ luacc_function_chunk_t *luacc_parse_function_chunk(const luacc_chunk_t *chunk, s
 				case LUACC_CONST_TYPE_STRING:
 					printf("STRING %s", constant->str_val->str);
 					break;
+				default:
+					printf("??");
 				}
 
 				putchar('\n');
 			}
 		}
 	}
+
+	// ignore the debug symbols, then we're good to go
+	if ((*index) + header->int_size >= chunk->len)
+		return func_chunk;
+
+	const uint64_t LINE_NUMBER_COUNT = luacc_get_uint(chunk, index);
+
+	for (uint64_t i = 0; i < LINE_NUMBER_COUNT; i++)
+		luacc_get_u32(chunk, index);
+
+	if ((*index) + header->int_size >= chunk->len)
+		return func_chunk;
+
+	const uint64_t LOCAL_COUNT = luacc_get_uint(chunk, index);
+
+	for (uint64_t i = 0; i < LOCAL_COUNT; i++)
+	{
+		// local name
+		luacc_get_lua_str(chunk, index);
+		// local start PC
+		luacc_get_u32(chunk, index);
+		// local end PC
+		luacc_get_u32(chunk, index);
+	}
+
+	if ((*index) + header->int_size >= chunk->len)
+		return func_chunk;
+
+	const uint64_t UPVALUE_COUNT = luacc_get_uint(chunk, index);
+
+	for (uint64_t i = 0; i < UPVALUE_COUNT; i++)
+		luacc_get_lua_str(chunk, index);
+	
+	luacc_free_chunk_header(header);
 
 	return func_chunk;
 }

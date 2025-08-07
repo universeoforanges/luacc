@@ -87,6 +87,8 @@ typedef struct
 
 typedef struct
 {
+	luacc_chunk_t *src_chunk;
+
 	luacc_lua_str_t *name;
 	
 	uint64_t first_line; // unused
@@ -102,12 +104,12 @@ typedef struct
 	array_t *prototypes;
 } luacc_function_chunk_t;
 
-#define LUACC_INSTR_OPCODE(i)   ((i) & 0x3F)
-#define LUACC_ARG_A(i) (((i) >> 6) & 0xFF)
-#define LUACC_ARG_B(i) (((i) >> 23) & 0x1FF)
-#define LUACC_ARG_C(i) (((i) >> 14) & 0x1FF)
-#define LUACC_ARG_Bx(i) (((i) >> 14) & 0x3FFFF)
-#define LUACC_ARG_sBx(i) (LUACC_ARG_Bx(i) - (((1 << 18) - 1) >> 1))
+#define LUACC_INSTR_OPCODE(i) ((i) & 0x3F)
+#define LUACC_ARG_A(i)        (((i) >> 6) & 0xFF)
+#define LUACC_ARG_B(i)        (((i) >> 23) & 0x1FF)
+#define LUACC_ARG_C(i)        (((i) >> 14) & 0x1FF)
+#define LUACC_ARG_Bx(i)       (((i) >> 14) & 0x3FFFF)
+#define LUACC_ARG_sBx(i)      (LUACC_ARG_Bx(i) - (((1 << 18) - 1) >> 1))
 
 // instruction stuff
 

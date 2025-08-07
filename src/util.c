@@ -6,6 +6,8 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 
+#include <unistd.h>
+#include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
 
@@ -75,4 +77,27 @@ void luacc_parse_chunks(const array_t *chunks, array_t *func_chunks)
 
 		luacc_array_append(func_chunks, func_chunk);
 	}
+}
+
+char *luacc_get_fname_from_handle(FILE *handle)
+{
+	int fd = fileno(handle);
+	if (fd == -1) return NULL;
+
+	char fd_path[256];
+	snprintf(fd_path, sizeof(fd_path), "/proc/self/fd/%d", fd);
+
+	char *fname = (char *) malloc(256);
+	if (!fname) return NULL;
+
+	ssize_t n = readlink(fd_path, fname, 255);
+	if (n == -1)
+	{
+		free(fname);
+		return NULL;
+	}
+
+	fname[n] = '\0';
+
+	return fname;
 }

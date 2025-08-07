@@ -1,4 +1,4 @@
-# LuaCC - The Lua Compiler Compiler written in C
+# LuaCC - The Lua Bytecode Compiler written in C
 ## Completely rewritten as of 6/3/25!
 LuaCC is a compiler which compiles Lua bytecode to assembly, which can be assembled & linked into machine code. Pretty useful, if you ask me
 
@@ -12,10 +12,19 @@ LuaCC only supports Linux as of now
 ```
 luacc [options] input file(s)
 ```
-e.g. `luacc -o assembly.asm bytecode.lua`
+e.g. `luacc --asm=nasm bytecode.lua`
 
 ## Compilation
-compilation instructions coming soon
+LuaCC requires barely any dependencies and only relies on the C standard library & OS APIs. So as long as you have a C compiler (`gcc` is a solid option) & CMake installed on your system, you should be able to compile LuaCC without any issues.
+
+To compile LuaCC, run the following commands in a terminal:
+
+```bash
+mkdir build
+cd build
+cmake ..
+make
+```
 
 ## Why LuaCC?
-to learn, and why not???
+LuaCC was created to be a hobby project and was made purely for fun. However, you can contribute to make LuaCC better.

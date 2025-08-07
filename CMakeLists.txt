@@ -4,7 +4,7 @@ if(CMAKE_BINARY_DIR STREQUAL CMAKE_SOURCE_DIR)
 	message(FATAL_ERROR "in source builds are not permitted")
 endif()
 
-if(WIN32 OR APPLE)
+if(NOT LINUX)
 	message(FATAL_ERROR "luacc only supports linux as of now. sorry!")
 endif()
 
@@ -14,8 +14,10 @@ file(GLOB_RECURSE LUACC_SRC "${PROJECT_SOURCE_DIR}/src/*.c")
 
 add_executable(${PROJECT_NAME} ${LUACC_SRC})
 
-target_compile_options(${PROJECT_NAME} PRIVATE "-g")
-target_compile_options(${PROJECT_NAME} PRIVATE "--static")
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+	target_compile_options(${PROJECT_NAME} PRIVATE "-g")
+endif()
+
 target_compile_definitions(${PROJECT_NAME} PRIVATE -DLUACC_VERSION="luacc version ${PROJECT_VERSION}")
 
 # include paths

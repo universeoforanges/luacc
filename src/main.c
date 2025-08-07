@@ -1,55 +1,65 @@
 #include <luacc/luac_func_chunk.h>
 #include <luacc/luac_chunk.h>
+#include <luacc/codegen.h>
 #include <luacc/array.h>
 #include <luacc/log.h>
 
+#include <stdlib.h>
 #include <unistd.h>
+#include <getopt.h>
+#include <string.h>
 #include <stdio.h>
 
 void print_usage(void)
 {
 	printf("usage: luacc [options] input file(s)...\n");
 	printf("command line options:\n");
-	printf("\t-o <output>        outputs the compiled assembly to <output>.\n");
-	printf("\t-a <nasm|masm>     sets the assembly syntax to the provided assembler. (default is nasm)\n");
-	printf("\t-V                 makes the program provide more verbose output. great for debugging ig\n");
-	printf("\t-v                 prints the current version of luacc that you're using.\n");
-	printf("\t-h                 prints this help message\n");
+	printf("\t-a | --asm <nasm|masm>    sets the assembly syntax to the provided assembler. (default is nasm)\n");
+	printf("\t-V | --verbose            makes the program provide more verbose output. great for debugging ig\n");
+	printf("\t-v | --version            prints the current version of luacc that you're using.\n");
+	printf("\t-h | --help               prints this help message\n");
 	printf("\nluacc is currently in early development, and your contribution helps. you can contribute at: https://github.com/universeoforanges/luacc\n");
 }
 
-
 int main(int argc, char **argv)
 {
-	int opt = 0;
-
-	char *output = "out.asm";
 	char *asm_syntax = "nasm";
 
-	while ((opt = getopt(argc, argv, "vho:a:V")) != -1)
+	static struct option options[] = {
+		{ "asm", required_argument, NULL, 'a' },
+		{ "verbose", no_argument, NULL, 'V' },
+		{ "version", no_argument, NULL, 'v' },
+		{ "help", no_argument, NULL, 'h' },
+		{ 0, 0, 0, 0 }
+	};
+	
+	int opt_idx = 0;
+	int opt = 0;
+
+	while ((opt = getopt_long(argc, argv, "a:Vvh", options, &opt_idx)) != -1)
 	{
 		switch (opt)
 		{
-		case 'v':
-			printf("%s\n", LUACC_VERSION);
-			return 0;
-		case 'h':
-			print_usage();
-			return 0;
-		case 'o':
-			output = optarg;
-			break;
 		case 'a':
 			asm_syntax = optarg;
 			break;
 		case 'V':
 			luacc_enable_verbose_logging(LUACC_TRUE);
 			break;
-		default:
+		case 'v':
+			printf("%s\n", LUACC_VERSION);
+			return 0;
+		case 'h':
+			print_usage();
+			return 0;
+		case '?':
 			char buf[256];
-			snprintf(buf, sizeof(buf), "invalid command line option `%c`", (char) opt);
+			snprintf(buf, sizeof(buf), "invalid command line option `%c`", (char) optopt);
 
 			luacc_log(LUACC_LOG_LEVEL_WARNING, buf);
+			break;
+		default:
+			break;
 		}
 	}
 
@@ -87,7 +97,17 @@ int main(int argc, char **argv)
 
 	// parsing
 	luacc_parse_chunks(chunks, function_chunks);
-	
+
+	// finally, the code generation part
+	for (size_t i = 0; i < function_chunks->len; i++)
+	{
+		const luacc_function_chunk_t *func = function_chunks->data[i];
+		char fname_buf[256];
+
+		snprintf(fname_buf, sizeof(fname_buf), "out%d.asm", (int) i);
+		luacc_func_chunk_generate(func, fname_buf);
+	}
+
 	for (int i = 0; i < input_files->len; i++)
 		fclose(input_files->data[i]);
 
